@@ -23,17 +23,22 @@ parse(File) ->
     _Other -> error_logger:info_msg("parse_file other case '~p'",[_Other]), {error, "unknown"}
     end.
 
+update_code_path(Dir, [Path|L]) ->
+    DepsDir = filename:join(Dir, Path),
+    case file:list_dir(DepsDir) of
+        {ok, Dirs} ->
+            [code:add_path(filename:join(DepsDir, X)) || X <- Dirs];
+        {error, _} ->
+            ok
+    end,
+    update_code_path(Dir, L);
+update_code_path(_, []) -> ok.
+
 epp_parse_file(File) ->
     case file:open(File, [read]) of
     {ok, FIO} -> 
         OriginalCodePath = code:get_path(),
-        DepsDir = filename:join(filename:dirname(File), "../deps"),
-        case file:list_dir(DepsDir) of
-            {ok, Dirs} ->
-                [code:add_path(filename:join(DepsDir, X)) || X <- Dirs];
-            {error, _} ->
-                ok
-        end,
+        update_code_path(filename:dirname(File), ["../deps", "../_build/default/lib"]),
 
         Ret = do_epp_parse_file(File, FIO),
 
