@@ -55,6 +55,12 @@ handle_info({tcp, Socket, RawData}, State) ->
             lsp_navigation:goto_definition(file_uri_to_file(FileName), to_int(Line), to_int(Column));
         {hover_info, FileName, Line, Column} -> 
             lsp_navigation:hover_info(file_uri_to_file(FileName), to_int(Line), to_int(Column));
+        {references_info, FileName, Line, Column} ->
+            lsp_navigation:references_info(file_uri_to_file(FileName), to_int(Line), to_int(Column));
+        {codelens_info, FileName} ->
+            lsp_navigation:codelens_info(file_uri_to_file(FileName));
+        {stop_server} ->
+            init:stop();
         _ ->
 	        #{parse_result => false,
 	        error_message => <<"unknown command">>}
@@ -75,8 +81,9 @@ handle_info(_Info, StateData) ->
 terminate(_Reason, #state{socket = Socket, parent=Parent}) ->
     (catch gen_tcp:close(Socket)),
     spawn_link(
-        fun () -> Ret=supervisor:start_child(Parent, []),
-                error_logger:info_msg("terminate start_child(~p)", [Ret]) 
+        fun () -> _Ret = supervisor:start_child(Parent, []),
+                %error_logger:info_msg("terminate start_child(~p)", [_Ret]),
+                ok
         end),    
     ok.
 

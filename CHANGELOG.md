@@ -1,5 +1,55 @@
-
 # Change log
+
+## Version 0.3.0 (May 12, 2018)
+### LSP fixes and improvements  
+* [PR #62](https://github.com/pgourlain/vscode_erlang/pull/62) 
+	- Navigation works for records and fields
+	- Navigation works for records in included files
+* [PR #63](https://github.com/pgourlain/vscode_erlang/pull/63) 
+	- Settings cleanup
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+---
+
+## Version 0.2.9 (May 11, 2018)
+### LSP  
+* [PR #58](https://github.com/pgourlain/vscode_erlang/pull/58) 
+	- Goto definition on module, hover info on BIF
+* [PR #59](https://github.com/pgourlain/vscode_erlang/pull/59) 
+	- Navigation works in all directories. Linter can find include files
+	- Thanks to [Wojtek Surowka](https://github.com/wojteksurowka)
+* [PR #60](https://github.com/pgourlain/vscode_erlang/pull/60) 
+	- Update to the latest vscode LSP
+* [PR #61](https://github.com/pgourlain/vscode_erlang/pull/61)
+	- Add CodeLens support on functions
+	- Add codelens configuration (erlang.languageServerProtocol.codeLensEnabled)
+![codelens](images/vscode-erlang-codelens.png)
+
+---
+
+## Version 0.2.8 (May 9, 2018)
+### LSP  
+* [PR #55](https://github.com/pgourlain/vscode_erlang/pull/55)
+	- LSP updates and README update
+* [PR #56](https://github.com/pgourlain/vscode_erlang/pull/56) 
+	- Hover shows edoc for project functions
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+---
+
+
+## Version 0.2.7 (May 7, 2018)
+### LSP and Debugger 
+* [PR #53](https://github.com/pgourlain/vscode_erlang/pull/53)
+	- Hover shows clause heads for project functions
+* [PR #54](https://github.com/pgourlain/vscode_erlang/pull/54) 
+	- Start Without Debugging no longer starts debugger
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+---
 
 ## Version 0.2.6 (May 2, 2018)
 ### LSP : Help hover for standard functions and some LSP fixes 

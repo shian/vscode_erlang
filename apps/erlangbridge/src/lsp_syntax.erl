@@ -50,15 +50,34 @@ epp_parse_file(File) ->
     end.
 
 do_epp_parse_file(File, FIO) ->
-    case epp:open(File, FIO, {1,1},["../include"],[]) of
+    case epp:open(File, FIO, {1,1}, get_include_path(File), []) of
     {ok, Epp} -> {ok, epp:parse_file(Epp)};
     {error, _Err} -> {error, _Err} 
+    end.
+
+get_include_path(File) ->
+    RebarConfig = lsp_navigation:find_rebar_config(File),
+    case RebarConfig of
+        undefined ->
+            [];
+        _ ->
+            Consult = file:consult(RebarConfig),
+            case Consult of
+                {ok, Terms} ->
+                    ErlOpts = proplists:get_value(erl_opts, Terms, []),
+                    IncludePaths = proplists:get_all_values(i, ErlOpts),
+                    lists:map(fun (Path) ->
+                        filename:absname(Path, filename:dirname(RebarConfig))
+                    end, IncludePaths);
+                _ ->
+                    []
+            end
     end.
 
 lint(Forms, File) ->
     LintResult = erl_lint:module(Forms, File,[ {strong_validation}]),
     error_logger:info_msg("lint result '~p'",[LintResult]),
-    case remove_include_errors(LintResult) of
+    case LintResult of
     % nothing wrong
     {ok, []} -> #{parse_result => true};
     % just warnings
@@ -67,12 +86,12 @@ lint(Forms, File) ->
         errors_warnings =>
             extract_error_or_warning(<<"warning">>, Warnings)};
     % errors, no warnings
-    {error, Errors, []} ->
+    {error, [Errors], []} ->
     #{parse_result => true,
         errors_warnings =>
             extract_error_or_warning(<<"error">>, Errors)};
     % errors and warnings
-    {error, Errors, [Warnings]} ->
+    {error, [Errors], [Warnings]} ->
     #{parse_result => true,
         errors_warnings =>
             extract_error_or_warning(<<"error">>, Errors) ++
@@ -85,31 +104,14 @@ lint(Forms, File) ->
         #{parse_result => false, error_message => <<"lint error">>}
     end.
 
-remove_include_errors({error, [Errors], []}) ->
-    {error, filter_epp_errors(Errors), []};
-remove_include_errors({error, [Errors], [Warnings]}) ->
-    {error, filter_epp_errors(Errors), [Warnings]};
-remove_include_errors(_Any) ->
-    _Any.
-
-filter_epp_errors({File, Errors}) ->
-    case lists:filter(fun (X) -> is_not_epp(X) end, Errors) of
-    [] -> {File, []};
-    _Any -> {File, _Any}
-    end.
-
-is_not_epp(X) ->
-    element(2, X) =/= epp.
-
+extract_error_or_warning(_Type, {_, []}) ->
+    [];
 extract_error_or_warning(Type, ErrorsOrWarnings) ->
     [#{type => Type,
        file =>
 	   erlang:list_to_binary(element(1, ErrorsOrWarnings)),
        info => extract_info(X)}
-     || X <- element(2, ErrorsOrWarnings)];
-
-extract_error_or_warning(_Type, {_, []}) ->
-    [].
+     || X <- element(2, ErrorsOrWarnings)].
 
 extract_info({Line, Module, MessageBody}) when is_number(Line) ->
     extract_info({{Line, 1}, Module, MessageBody});
