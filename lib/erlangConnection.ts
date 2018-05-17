@@ -143,15 +143,7 @@ export abstract class ErlangConnection extends EventEmitter {
 
     protected abstract get_ErlangFiles(): string[];
 
-    protected post(verb: string, body?: string): Promise<any> {
-        return this.postorget("POST", verb, body);
-    }
-
-    private get(verb: string, body?: string): Promise<any> {
-        return this.postorget("GET", verb, body);
-    }
-
-    private postorget(method: string, verb: string, body?: string): Promise<any> {
+    protected post(verb: string, body?: string, multilineBody?: boolean): Promise<any> {
         return new Promise<any>((a, r) => {
             if (!body) {
                 body = "";
@@ -160,11 +152,14 @@ export abstract class ErlangConnection extends EventEmitter {
                 host: "127.0.0.1",
                 path: verb,
                 port: this.erlangbridgePort,
-                method: method,
+                method: "POST",
                 headers: {
                     'Content-Type': 'plain/text',
                     'Content-Length': Buffer.byteLength(body)
                 }
+            }
+            if (multilineBody) {
+                options.headers['X-Multiline-Body'] = 'true';
             }
             var postReq = http.request(options, response => {
                 var body = '';
@@ -191,6 +186,4 @@ export abstract class ErlangConnection extends EventEmitter {
             postReq.end();
         });
     }
-
-
 }

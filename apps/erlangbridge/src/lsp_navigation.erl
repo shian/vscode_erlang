@@ -1,6 +1,6 @@
 -module(lsp_navigation).
 
--export([goto_definition/3, hover_info/3, find_rebar_config/1, references_info/3, codelens_info/1]).
+-export([goto_definition/3, hover_info/3, references_info/3, codelens_info/1]).
 
 goto_definition(File, Line, Column) ->
     try internal_goto_definition(File, Line, Column) of
@@ -10,7 +10,7 @@ goto_definition(File, Line, Column) ->
     end.
 
 internal_goto_definition(File, Line, Column) ->
-    FileSyntaxTree = file_syntax_tree(File),
+    FileSyntaxTree = lsp_syntax:file_syntax_tree(File),
     case FileSyntaxTree of
         undefined ->
             #{result => <<"ko">>};
@@ -33,7 +33,7 @@ hover_info(File, Line, Column) ->
     end.
 
 internal_hover_info(File, Line, Column) ->
-    FileSyntaxTree = file_syntax_tree(File),
+    FileSyntaxTree = lsp_syntax:file_syntax_tree(File),
     case FileSyntaxTree of
         undefined ->
             #{result => <<"ko">>};
@@ -79,7 +79,7 @@ references_info(File, Line, Column) ->
     end.
 
 internal_references_info(File, Line, Column) ->
-    case file_syntax_tree(File) of
+    case lsp_syntax:file_syntax_tree(File) of
         undefined -> #{result => <<"ko">>};
         FileSyntaxTree ->
             MapResult = fold_in_file_syntax_tree(FileSyntaxTree, 
@@ -123,7 +123,7 @@ codelens_info(File) ->
     end.
 
 internal_codelens_info(File) ->
-    case file_syntax_tree(File) of
+    case lsp_syntax:file_syntax_tree(File) of
         undefined -> #{result => <<"ko">>};
         FileSyntaxTree ->
             %io:format("~p~n", [FileSyntaxTree]),
@@ -200,19 +200,6 @@ join_strings([String], _) ->
     String;
 join_strings([String|Rest], Joiner) ->
     String ++ Joiner ++ join_strings(Rest, Joiner).
-
-file_syntax_tree(File) ->
-    case gen_lsp_doc_server:get_document(File) of
-        {ok, FileSyntaxTree} ->
-            FileSyntaxTree;
-        not_found -> 
-            case lsp_syntax:parse(File) of
-                {ok, FileSyntaxTree} ->
-                    FileSyntaxTree;
-                _ ->
-                    undefined
-            end        
-    end.
 
 fold_in_file_syntax_tree(FileSyntaxTree, StartAcc, Fun) ->
     lists:foldl(fun (TopLevelSyntaxTree, Acc) ->
@@ -315,13 +302,13 @@ get_module_syntax_tree(Module, CurrentFileSyntaxTree, CurrentFile) ->
                 undefined ->
                     undefined;
                 _ ->
-                    {file_syntax_tree(ModuleFile), ModuleFile}
+                    {lsp_syntax:file_syntax_tree(ModuleFile), ModuleFile}
             end
     end.
 
 find_module_file(Module, CurrentFile) ->
     CurrentDir = filename:dirname(CurrentFile),
-    RebarConfig = find_rebar_config(CurrentDir),
+    RebarConfig = maps:get(rebar_config, gen_lsp_doc_server:get_config(), undefined),
     RootDir = case RebarConfig of
         undefined -> CurrentDir;
         _ -> filename:dirname(RebarConfig)
@@ -344,21 +331,6 @@ find_module_file(Module, CurrentFile) ->
                     ANoBuioldFile;
                 _ ->
                     AFile
-            end
-    end.
-
-find_rebar_config(CurrentDir) ->
-    RebarConfig = filename:join(CurrentDir, "rebar.config"),
-    case filelib:is_file(RebarConfig) of
-        true ->
-            RebarConfig;
-        _ ->
-            Elements = filename:split(CurrentDir),
-            case Elements of
-                [_] ->
-                    undefined;
-                _ ->
-                    find_rebar_config(filename:join(lists:droplast(Elements)))
             end
     end.
 
@@ -464,7 +436,7 @@ find_module(FileSyntaxTree, Module) ->
     end.
 
 find_record(FileSyntaxTree, Record) ->
-    Fun = fun (SyntaxTree, File) ->
+    Fun = fun (SyntaxTree, _File) ->
         case SyntaxTree of
             {attribute, _, record, {Record, _}} -> SyntaxTree;
             _ -> undefined

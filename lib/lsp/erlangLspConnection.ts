@@ -1,4 +1,6 @@
 import {ErlangConnection} from '../erlangConnection';
+import * as path from 'path';
+import * as fs from 'fs'; 
 
 export interface ParsingResult {
     parse_result : string;
@@ -66,18 +68,70 @@ export class ErlangLspConnection extends ErlangConnection {
         }
     }
 
-    public validateTextDocument(uri : string, numberOfProblems : number, callback: (parsingResult : ParsingResult) => void): void {
-        //this.debug("begin validateTextDocument");
-        this.post("validate_text_document", this.toErlangUri(uri)).then(
+    public setConfig(entries: Map<string, string>, callback: () => void): void {
+        var body = "";
+        entries.forEach(function (value: string, key: string) {
+            body += key + "=" + value + "\r\n";
+        });
+        this.post("set_config", body, true).then(
             res => {
                 if (res.error) {
-                    this.debug(`validateTextDocument error:${res.error}`);                    
+                    this.debug(`setConfig error:${res.error}`);
+                }
+                else {
+                    callback();
+                }
+                return true;
+            },
+            err => { return false; }
+        );
+    }
+
+    public parseSourceFile(uri : string, tmpContentsFile: string, callback: () => void): void {
+        var body = this.toErlangUri(uri);
+        if (tmpContentsFile)
+            body += "\r\n" + tmpContentsFile;
+        this.post("parse_source_file", body).then(
+            res => {
+                if (res.error) {
+                    this.debug(`parseSourceFile error:${res.error}`);                    
+                } else {
+                    callback();
+                }
+                return true;
+            },
+            err =>  { return false; }
+        );
+    }
+
+    public validateParsedSourceFile(uri : string, callback: (parsingResult : ParsingResult) => void): void {
+        this.post("validate_parsed_source_file", this.toErlangUri(uri)).then(
+            res => {
+                if (res.error) {
+                    this.debug(`validateParsedSourceFile error:${res.error}`);                    
                 } else {
                     callback(res);
                 }
                 return true;
             },
-            err =>  {return false;}
+            err =>  { return false; }
+        );
+    }
+
+    public validateConfigFile(uri : string, tmpContentsFile: string, callback: (parsingResult : ParsingResult) => void): void {
+        var body = this.toErlangUri(uri);
+        if (tmpContentsFile)
+            body += "\r\n" + tmpContentsFile;
+        this.post("validate_config_file", body).then(
+            res => {
+                if (res.error) {
+                    this.debug(`validateConfigFile error:${res.error}`);                    
+                } else {
+                    callback(res);
+                }
+                return true;
+            },
+            err =>  { return false; }
         );
     }
 
@@ -219,4 +273,3 @@ export class ErlangLspConnection extends ErlangConnection {
             return uri;
     }
 }
-
