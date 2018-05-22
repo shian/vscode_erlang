@@ -1,7 +1,7 @@
 {
 	"name": "erlang",
 	"description": "Erlang language extension for Visual Studio Code",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"icon": "images/icon.png",
 	"publisher": "pgourlain",
 	"engines": {
@@ -205,7 +205,7 @@
 					"type": "boolean",
 					"description": "Activate technical traces",
 					"title": "Activate technical traces for use in the extension development",
-					"default": "false"
+					"default": false
 				}
 			}
 		},
