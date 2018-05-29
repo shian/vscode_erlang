@@ -3,16 +3,18 @@
 -export([parse_source_file/2, validate_parsed_source_file/1, parse_config_file/2, file_syntax_tree/1, module_syntax_tree/1, find_module_file/2]).
 
 parse_source_file(File, ContentsFile) ->
-    case epp_parse_file(ContentsFile, get_include_path(File)) of
+    case epp_parse_file(ContentsFile, get_include_path(File), get_define_from_rebar_config(File)) of
         {ok, FileSyntaxTree} ->
-            gen_lsp_doc_server:add_or_update_document(File, update_file_in_forms(File, ContentsFile, FileSyntaxTree)),
+            UpdatedSyntaxTree = update_file_in_forms(File, ContentsFile, FileSyntaxTree),
+            {_Result, Contents} = file:read_file(ContentsFile),
+            gen_lsp_doc_server:add_or_update_document(File, {UpdatedSyntaxTree, Contents}),
             #{parse_result => true};
         _ ->
             #{parse_result => false, error_message => <<"Cannot open file">>}
     end.
 
 validate_parsed_source_file(File) ->
-    {ok, FileSyntaxTree} = gen_lsp_doc_server:get_document(File),
+    {ok, {FileSyntaxTree, _Contents}} = gen_lsp_doc_server:get_document(File),
     lint(FileSyntaxTree, File).
 
 parse_config_file(File, ContentsFile) ->
@@ -27,13 +29,13 @@ parse_config_file(File, ContentsFile) ->
 
 file_syntax_tree(File) ->
     case gen_lsp_doc_server:get_document(File) of
-        {ok, FileSyntaxTree} ->
+        {ok, {FileSyntaxTree, _Contents}} ->
             FileSyntaxTree;
         not_found -> 
-            case epp_parse_file(File, get_include_path(File)) of
+            case epp_parse_file(File, get_include_path(File), get_define_from_rebar_config(File)) of
                 {ok, FileSyntaxTree} ->
                     FileSyntaxTree;
-                _ -> undefined
+                _ -> throw("Cannot parse file " ++ File)
             end
     end.
 
@@ -79,17 +81,17 @@ update_file_in_forms(File, ContentsFile, FileSyntaxTree) ->
             Form
     end, FileSyntaxTree).
 
-epp_parse_file(File, IncludePath) ->
+epp_parse_file(File, IncludePath, Defines) ->
     case file:open(File, [read]) of
     {ok, FIO} -> 
-        Ret = do_epp_parse_file(File, FIO, IncludePath),
+        Ret = do_epp_parse_file(File, FIO, IncludePath, Defines),
         file:close(FIO), 
         Ret;
     _ -> {error, file_could_not_opened}
     end.
 
-do_epp_parse_file(File, FIO, IncludePath) ->
-    case epp:open(File, FIO, {1,1}, IncludePath, []) of
+do_epp_parse_file(File, FIO, IncludePath, Defines) ->
+    case epp:open(File, FIO, {1,1}, IncludePath, Defines) of
         {ok, Epp} -> {ok, epp:parse_file(Epp)};
         {error, _Err} -> {error, _Err} 
     end.
@@ -99,7 +101,9 @@ get_include_path(File) ->
                 get_settings_include_paths() ++
                 get_file_include_paths(File) ++
                 get_include_paths_from_rebar_config(File),
-    lists:filter(fun filelib:is_dir/1, Candidates).
+    Paths = lists:filter(fun filelib:is_dir/1, Candidates),
+    gen_lsp_server:lsp_log("get_include_path: ~p", [Paths]),
+    Paths.
 
 get_standard_include_paths() ->
     RootDir = maps:get(root, gen_lsp_doc_server:get_config(), ""),
@@ -110,7 +114,7 @@ get_standard_include_paths() ->
     ].
 
 get_settings_include_paths() ->
-    SettingPaths = string:tokens(maps:get(include_paths, gen_lsp_doc_server:get_config(), ""), "|"),
+    SettingPaths = maps:get(includePaths, gen_lsp_doc_server:get_config(), []),
     RootDir = maps:get(root, gen_lsp_doc_server:get_config(), ""),
     lists:map(fun (Path) ->
         abspath(RootDir, Path)
@@ -118,6 +122,38 @@ get_settings_include_paths() ->
 
 get_file_include_paths(File) ->
     [filename:dirname(File), filename:rootname(File)].
+
+get_define_from_rebar_config(File) ->
+    RebarConfig = find_rebar_config(filename:dirname(File)),
+    case RebarConfig of
+        undefined ->
+            [];
+        _ ->
+            Consult = file:consult(RebarConfig),
+            ErlOptsDefines = case Consult of
+                {ok, Terms} ->
+                    ErlOpts = proplists:get_value(erl_opts, Terms, []),
+                    Defines = rebar_define_to_epp_define(proplists:lookup_all(d, ErlOpts)),
+                    gen_lsp_server:lsp_log("get_defines: ~p", [Defines]),
+                    Defines;
+                _ ->
+                    []
+            end,
+            DefaultDefines = [],
+            ErlOptsDefines ++ DefaultDefines
+    end.
+
+rebar_define_to_epp_define([]) ->
+    [];
+rebar_define_to_epp_define([none]) ->
+    [];
+rebar_define_to_epp_define([H|T]) ->
+    case H of 
+    {d, Atom, Value} -> [{Atom, Value}] ++ rebar_define_to_epp_define(T);
+    {d, Atom} -> [Atom] ++ rebar_define_to_epp_define(T);
+    _ -> rebar_define_to_epp_define(T)
+    end.
+
 
 get_include_paths_from_rebar_config(File) ->
     RebarConfig = find_rebar_config(filename:dirname(File)),
@@ -165,7 +201,6 @@ abspath(BaseDir, Path) ->
 
 lint(FileSyntaxTree, File) ->
     LintResult = erl_lint:module(FileSyntaxTree, File,[ {strong_validation}]),
-    %error_logger:info_msg("lint result '~p'",[LintResult]),
     case LintResult of
     % nothing wrong
     {ok, []} -> #{parse_result => true};
