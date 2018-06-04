@@ -1,7 +1,7 @@
 {
 	"name": "erlang",
 	"description": "Erlang language extension for Visual Studio Code",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"icon": "images/icon.png",
 	"publisher": "pgourlain",
 	"engines": {
@@ -17,7 +17,8 @@
 		"onCommand:extension.rebarBuild",
 		"onCommand:extension.rebarGetDeps",
 		"onCommand:extension.rebarUpdateDeps",
-		"onCommand:extension.erleunit"
+		"onCommand:extension.erleunit",
+		"onCommand:extension.dialyzer"
 	],
 	"main": "./out/lib/extension",
 	"contributes": {
@@ -118,6 +119,10 @@
 			{
 				"command": "extension.erleunit",
 				"title": "Erlang: run eunit tests with erlang shell"
+			},
+			{
+				"command": "extension.dialyzer",
+				"title": "Erlang: rebar dialyzer"
 			}
 		],
 		"keybindings": [
