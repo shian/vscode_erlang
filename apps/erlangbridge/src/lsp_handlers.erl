@@ -128,7 +128,29 @@ textDocument_completion(_Socket, Params) ->
     auto_complete(File, Line + 1, TextBefore).
 
 textDocument_formatting(_Socket, Params) ->
-    erl_tidy:file(lsp_utils:file_uri_to_file(mapmapget(textDocument, uri, Params)), [{backups, false}]).
+    File = lsp_utils:file_uri_to_file(mapmapget(textDocument, uri, Params)),
+    Contents = case gen_lsp_doc_server:get_document_attribute(File, contents) of
+        undefined ->
+            {ok, FileContents} = file:read_file(File),
+            FileContents;
+        StoredContents ->
+            StoredContents
+    end,
+    TempFile = mktemp(Contents),
+    erl_tidy:file(binary_to_list(TempFile), [
+        {backups, false},
+        {idem, true}
+    ]),
+    {ok, UpdatedContents} = file:read_file(TempFile),
+    file:delete(TempFile),
+    [
+        #{range =>
+            #{
+                <<"start">> => #{line => 0, character => 0},
+                <<"end">> => #{line => 999999, character => 255}
+            },
+        newText => UpdatedContents}
+    ].
 
 textDocument_codeLens(_Socket, Params) ->
     Uri = mapmapget(textDocument, uri, Params),
@@ -206,7 +228,7 @@ validate_config_file(Socket, File, ContentsFile) ->
     send_diagnostics(Socket, File, maps:get(errors_warnings, ErrorsWarnings, [])).
 
 mktemp(Contents) ->
-    Rand = integer_to_list(binary:decode_unsigned(crypto:strong_rand_bytes(8)), 36),
+    Rand = integer_to_list(binary:decode_unsigned(crypto:strong_rand_bytes(8)), 36) ++ ".erl",
     TempFile = filename:join(gen_lsp_config_server:tmpdir(), Rand),
     filelib:ensure_dir(TempFile),
     file:write_file(TempFile, Contents),
@@ -247,6 +269,7 @@ auto_complete(File, Line, Text) ->
         {"#((?:[a-z][a-zA-Z0-0_@]*)?)$", record},
         {"#([a-z][a-zA-Z0-0_@]*)\.((?:[a-z][a-zA-Z0-0_@]*)?)$", field},
         {"[^a-zA-Z0-0_@]([A-Z][a-zA-Z0-0_@]*)$", variable},
+        {"^-([a-z]*)$", attribute},
         {"([a-z][a-zA-Z0-0_@]*)$", atom}
     ],
     case match_regex(Text, RegexList) of
@@ -258,6 +281,8 @@ auto_complete(File, Line, Text) ->
             lsp_completion:field(File, list_to_atom(binary_to_list(Record)), binary_to_list(Field));
         {variable, [Variable]} ->
             lsp_completion:variable(File, Line, binary_to_list(Variable));
+        {attribute, [Attribute]} ->
+            lsp_completion:attribute(binary_to_list(Attribute));
         {atom, [Atom]} ->
             lsp_completion:atom(File, binary_to_list(Atom));
         {nomatch, _}
