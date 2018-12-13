@@ -1,5 +1,61 @@
 # Change log
 
+## Version 0.5.0 (November 17, 2018)
+### Improvements
+* [PR #118](https://github.com/pgourlain/vscode_erlang/pull/117) 
+	- Behaviours not from standard library recognised by linter
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+
+---
+## Version 0.4.9 (November 11, 2018)
+### Bug fix
+* [PR #117](https://github.com/pgourlain/vscode_erlang/pull/117) 
+	- Bug fix : Debugger comm no longer crashes if tuple is used as a key in a map
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+
+---
+## Version 0.4.8 (November 5, 2018)
+### Bug fix
+* [PR #116](https://github.com/pgourlain/vscode_erlang/pull/116) 
+	- Bug fix #112 : Proxy setting support 
+* [PR #115](https://github.com/pgourlain/vscode_erlang/pull/115) 
+	- Bug fix #100 : call timeout on gen_lsp_doc_server 
+---
+
+## Version 0.4.7 (November 3, 2018)
+### New features
+* [PR #103](https://github.com/pgourlain/vscode_erlang/pull/103) 
+	- Support for .xrl (leex) extension
+* [PR #113](https://github.com/pgourlain/vscode_erlang/pull/113) 
+	- Add symbol provider. Now outline view is filled with functions, types and records 
+
+Thanks to 
+* [Jon Parise](https://github.com/jparise)
+---
+
+## Version 0.4.6 (June 20, 2018)
+### Bug fix
+* [PR #99](https://github.com/pgourlain/vscode_erlang/pull/99) 
+	- bug fix : Format Document fixes
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+---
+
+## Version 0.4.5 (June 16, 2018)
+### Autocompletion improvements and bug fixes
+* [PR #96](https://github.com/pgourlain/vscode_erlang/pull/96) 
+	- Autocompletion fixes and improvements
+* [PR #98](https://github.com/pgourlain/vscode_erlang/pull/98) 
+	- bug fix : using 'erlangPath' configuration everywhere
+
+Thanks to 
+* [Wojtek Surowka](https://github.com/wojteksurowka)
+---
 
 ## Version 0.4.4 (June 8, 2018)
 ### Autocompletion improvements
